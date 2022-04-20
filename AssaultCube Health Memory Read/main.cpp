@@ -3,7 +3,7 @@
 #include <TlHelp32.h>
 #include <tchar.h>
 
-#include "Header.h"
+#include "Header.hpp"
 
 using std::cout;
 using std::endl;
@@ -26,7 +26,6 @@ DWORD GetModuleBaseAddress(TCHAR* lpszModuleName, DWORD pID) {
 
 
 	}
-	cout << "[DEBUG]" << "Finnished Getmodulebaseaddress()" << endl;
 	CloseHandle(hSnapshot);
 	return dwModuleBaseAddress;
 }
@@ -37,8 +36,8 @@ int main()
 
 	if (hwnd == NULL)
 	{
-		cout << "[DEBUG]" << "No game opened" << endl;
-		return -1;
+		cout << "[DEBUG]" << " No game opened" << endl;
+		exit(-1);
 	}
 
 	DWORD pID = NULL;
@@ -48,23 +47,41 @@ int main()
 
 	processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pID); // Opens the process for All Access and gets process handle
 
-	cout << "[DEBUG]" << "Procceshandle " << processHandle << endl;
-
 	if (processHandle == NULL)
 	{
-		cout << "[DEBUG]" << "Failed to open procces";
-		return -1;
+		cout << "[DEBUG]" << " Failed to open procces";
+		exit(-1);
 	}
 
 	TCHAR game_name[] = _T("ac_client");
 	DWORD gameBaseAddress = GetModuleBaseAddress(_T(game_name), pID);
 
-	DWORD PlayerHealth = (gameBaseAddress + offsetLocalPlayer) + Player_Health;
+	const int HealthDeadline = 500;
 
-	ReadProcessMemory(processHandle, (LPCVOID)PlayerHealth, &PlayerHealth, sizeof(PlayerHealth), NULL);
+	for (;;) // infinite loop
+	{
+		DWORD PlayerHealth = (gameBaseAddress + offsetLocalPlayer) + Player_Health; // The variables need to be updated
+		DWORD rifle_ammo = (gameBaseAddress + offsetLocalPlayer) + Rifle_ammo; // othervise the value wouldnt update
 
-	cout << "\n";
-	cout << "Player Health: " << PlayerHealth << endl;
+		ReadProcessMemory(processHandle, (LPCVOID)PlayerHealth, &PlayerHealth, sizeof(PlayerHealth), NULL);
+		ReadProcessMemory(processHandle, (LPCVOID)rifle_ammo, &rifle_ammo, sizeof(rifle_ammo), NULL);
+		
+		if (PlayerHealth < HealthDeadline)
+		{
+			cout << "DANGER, ";
+			cout << "Player Health: " << PlayerHealth << endl;
+			cout << "Rifle ammo: " << rifle_ammo << endl;
+		}
+		else
+		{
+			cout << "Player Health: " << PlayerHealth << endl;
+			cout << "Rifle ammo: " << rifle_ammo << endl;
+		}
+
+		Sleep(1000);
+	}
+
+
 
 	return 0;
 }
